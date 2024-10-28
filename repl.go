@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	pokeapi "github.com/Tomasz3pis/pokedex/internal"
+	"github.com/Tomasz3pis/pokedex/internal/pokedex"
 )
 
 func startRepl(cfg *config) {
@@ -24,7 +25,11 @@ func startRepl(cfg *config) {
 
 		command, exists := getCommands()[commandName]
 		if exists {
-			err := command.callback(cfg)
+			var params string
+			if len(words) > 1 {
+				params = words[1]
+			}
+			err := command.callback(cfg, params)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -40,63 +45,7 @@ type config struct {
 	pokeapiClient    pokeapi.Client
 	nextLocationsURL *string
 	prevLocationsURL *string
-}
-type Command struct {
-	name        string
-	description string
-	callback    func(*config) error
-}
-
-func commandHelp(cfg *config) error {
-	fmt.Println()
-	fmt.Println("Welcome to the Pokedex!")
-	fmt.Println("Usage:")
-	fmt.Println()
-	for _, cmd := range getCommands() {
-		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
-	}
-	fmt.Println()
-	return nil
-}
-
-func commandExit(cfg *config) error {
-	fmt.Println("Bye bye!")
-	os.Exit(0)
-	return nil
-}
-
-func commandMapf(cfg *config) error {
-	//TODO get locations, set next and prev, print locations
-	location, err := cfg.pokeapiClient.ListLocations(cfg.nextLocationsURL)
-	if err != nil {
-		return err
-	}
-	cfg.nextLocationsURL = location.Next
-	cfg.prevLocationsURL = location.Previous
-
-	for _, v := range location.Results {
-		fmt.Println(v.Name)
-	}
-
-	return nil
-}
-
-func commandMapb(cfg *config) error {
-	//TODO check prev, get locations, set next and prev, list locations
-	if cfg.prevLocationsURL == nil {
-		return fmt.Errorf("No previous locations avaliable")
-	}
-	location, err := cfg.pokeapiClient.ListLocations(cfg.prevLocationsURL)
-	if err != nil {
-		return err
-	}
-	cfg.nextLocationsURL = location.Next
-	cfg.prevLocationsURL = location.Previous
-
-	for _, v := range location.Results {
-		fmt.Println(v.Name)
-	}
-	return nil
+	pokedex          *pokedex.Pokedex
 }
 
 func getCommands() map[string]Command {
@@ -121,6 +70,26 @@ func getCommands() map[string]Command {
 			name:        "mapb",
 			description: "Display previous 20 areas name",
 			callback:    commandMapb,
+		},
+		"explore": {
+			name:        "explore <area_name>",
+			description: "List pokemons in provided area",
+			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch <pokemon_name>",
+			description: "Add pokemon to users pokedex",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect <pokemon_name>",
+			description: "Print information about pokemon in pokedex",
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "List all pokemons in your pokedex",
+			callback:    commandPokedex,
 		},
 	}
 }
